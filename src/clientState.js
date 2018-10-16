@@ -1,9 +1,10 @@
 import { NOTE_FRAGMENT } from './fragments';
+import { GET_NOTES } from './queries';
 
 export const defaults = {
   notes: [
     {
-      __typeNmae: 'Note',
+      __typename: 'Note',
       id: 1,
       title: 'First',
       content: 'Content'
@@ -31,15 +32,57 @@ export const typeDefs = [
   }
   `
 ];
+
+// fieldName(obj, args, context, info) { result }
+
 export const resolvers = {
   Query: {
     note: (_, variables, { cache }) => {
       const id = cache.config.dataIdFromObject({
-        __typeNmae: 'Note',
+        __typename: 'Note',
         id: variables.id
       });
-      const note = cache.readFragment({ fragment: NOTE_FRAGMENT });
+      const note = cache.readFragment({ fragment: NOTE_FRAGMENT, id });
+      // `id` is any id that could be returned by `dataIdFromObject`.
+      // https://www.apollographql.com/docs/react/advanced/caching.html#readfragment
       return note;
     }
+  },
+  Mutation: {
+    createNote: (_, variables, { cache }) => {
+      // Get all of notes
+      const { notes } = cache.readQuery({ query: GET_NOTES });
+      const { title, content } = variables;
+      const newNote = {
+        __typename: 'Note',
+        title,
+        content,
+        id: notes.length + 1
+      };
+      cache.writeData({
+        data: {
+          notes: [newNote, ...notes]
+        }
+      });
+      return newNote;
+    }
+  },
+  editNote: (_, { id, title, content }, { cache }) => {
+    const noteId = cache.config.dataIdFromObject({
+      __typename: 'Note',
+      id
+    });
+    const note = cache.readFragment({ fragment: NOTE_FRAGMENT, id: noteId });
+    const updatedNote = {
+      ...note,
+      title,
+      content
+    };
+    cache.writeFragment({
+      id: noteId,
+      fragment: NOTE_FRAGMENT,
+      data: updatedNote
+    });
+    return note;
   }
 };

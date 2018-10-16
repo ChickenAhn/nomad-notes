@@ -1,9 +1,9 @@
-import gql from 'graphql-tag'
+import gql from 'graphql-tag';
 
 export const NOTE_FRAGMENT = gql`
-  fragment NotePars on Note{
+  fragment NoteParts on Note {
     id
     title
     content
   }
-`
+`;
