@@ -1,38 +1,31 @@
 import { NOTE_FRAGMENT } from './fragments';
 import { GET_NOTES } from './queries';
+import { saveNotes, restoreNotes } from './offline';
 
 export const defaults = {
-  notes: [
-    {
-      __typename: 'Note',
-      id: 1,
-      title: 'First',
-      content: 'Content'
-    }
-  ]
+  notes: restoreNotes()
 };
 export const typeDefs = [
   `
-  schema {
-    query: Query
-    mutation: Mutation
-  }
-  type Query {
-    notes: [Note]!
-    note(id: Int!): Note
-  }
-  tpye Mutation {
-    createNote(title: String!, content: String!): Note
-    editNote(id:Int!, title:String, content: String): Note
-  }
-  type Note {
-    id: Int!
-    title: String!
-    content: String!
-  }
-  `
+    schema {
+        query: Query
+        mutation: Mutation
+    }
+    type Query {
+        notes: [Note]!
+        note(id: Int!): Note
+    }
+    type Mutation{
+        createNote(title: String!, content: String!): Note
+        editNote(id: Int!, title: String, content:String): Note
+    }
+    type Note{
+        id: Int!
+        title: String!
+        content: String!
+    }
+    `
 ];
-
 // fieldName(obj, args, context, info) { result }
 
 export const resolvers = {
@@ -64,25 +57,27 @@ export const resolvers = {
           notes: [newNote, ...notes]
         }
       });
+      saveNotes(cache);
       return newNote;
+    },
+    editNote: (_, { id, title, content }, { cache }) => {
+      const noteId = cache.config.dataIdFromObject({
+        __typename: 'Note',
+        id
+      });
+      const note = cache.readFragment({ fragment: NOTE_FRAGMENT, id: noteId });
+      const updatedNote = {
+        ...note,
+        title,
+        content
+      };
+      cache.writeFragment({
+        id: noteId,
+        fragment: NOTE_FRAGMENT,
+        data: updatedNote
+      });
+      saveNotes(cache);
+      return updatedNote;
     }
-  },
-  editNote: (_, { id, title, content }, { cache }) => {
-    const noteId = cache.config.dataIdFromObject({
-      __typename: 'Note',
-      id
-    });
-    const note = cache.readFragment({ fragment: NOTE_FRAGMENT, id: noteId });
-    const updatedNote = {
-      ...note,
-      title,
-      content
-    };
-    cache.writeFragment({
-      id: noteId,
-      fragment: NOTE_FRAGMENT,
-      data: updatedNote
-    });
-    return note;
   }
 };
